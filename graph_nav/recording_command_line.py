@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import time
+import csv
 
 import google.protobuf.timestamp_pb2
 import graph_nav_util
@@ -369,27 +370,36 @@ class RecordingInterface(object):
         from_T_to = from_tf.mult(to_tf.inverse())
         return from_T_to.to_proto()
     
+    #function to write the positional, temporal, and voltage data into a separate file
     def write_xyz_to_file(self, filepath):
-        with open(os.path.join(filepath, 'Waypoints_xyz.txt'), 'w') as destination:
-            # Write the data to the destination file
-            self._current_graph = self._graph_nav_client.download_graph()
-            sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
-            sorted_list_wp = []
-            for wp in sorted_list:
-                sorted_list_wp.append(self._get_waypoint(wp[0]))
-            count = 1
-            for waypoint in sorted_list_wp:
-                timestamp = waypoint.annotations.creation_time.seconds + waypoint.annotations.creation_time.nanos / 1e9
-                time_struct = time.localtime(timestamp)
-                time_val = time.asctime(time_struct)
-                x = waypoint.waypoint_tform_ko.position.x
-                y = waypoint.waypoint_tform_ko.position.y
-                z = waypoint.waypoint_tform_ko.position.z
-                value = 'Placeholder'
-                destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
-                destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
-                count += 1
-
+        self._current_graph = self._graph_nav_client.download_graph()
+            #turn graph into sorted list of ids
+        sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
+        data = [
+            ['Name', 'Time', 'X', 'Y', 'Z', 'Value']
+        ]
+        #loop to make a new sorted list that contains the waypoints themselves
+        sorted_list_wp = []
+        for wp in sorted_list:
+            sorted_list_wp.append(self._get_waypoint(wp[0]))
+        count = 1
+        for waypoint in sorted_list_wp:
+            #time measurement and conversion to readable format
+            timestamp = waypoint.annotations.creation_time.seconds + waypoint.annotations.creation_time.nanos / 1e9
+            time_struct = time.localtime(timestamp)
+            time_val = time.asctime(time_struct)
+            #positional values
+            x = waypoint.waypoint_tform_ko.position.x
+            y = waypoint.waypoint_tform_ko.position.y
+            z = waypoint.waypoint_tform_ko.position.z
+            value = 'Placeholder' # to be used for the voltage value that we measure
+            data.append(['Waypoint ' + str(count), str(time_val), str(x), str(y), str(z), str(value)])
+            count += 1
+        with open(os.path.join(filepath, 'Waypoints_xyz.csv'), mode = 'w', newline = '') as destination:
+            writer = csv.writer(destination)
+            writer.writerows(data)
+            #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
+            #destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
 
     def run(self, filepath):
         """Main loop for the command line interface."""
@@ -416,6 +426,7 @@ class RecordingInterface(object):
             req_type = str.split(inputs)[0]
 
             if req_type == 'q':
+                #when quiting, call function to write data
                 self.write_xyz_to_file(filepath)
                 break
 
@@ -431,6 +442,7 @@ class RecordingInterface(object):
 def main():
     """Run the command-line interface."""
     parser = argparse.ArgumentParser(description=__doc__)
+    #removing base argument so that the file can run without extra information on the command line
     #bosdyn.client.util.add_base_arguments(parser)
     parser.add_argument('-d', '--download-filepath',
                         help='Full filepath for where to download graph and snapshots.',
@@ -457,6 +469,9 @@ def main():
     sdk = bosdyn.client.create_standard_sdk('RecordingClient')
     #robot = sdk.create_robot(options.hostname)
     #bosdyn.client.util.authenticate(robot)
+
+    #use json file to create the robot without needing extra info on the command line
+    #still need to respond to the prompt that asks for the file name in which the data will be stored
     with open('graph_nav\\spot_configs.json', 'r') as file:
         data = json.load(file)
         robot = sdk.create_robot(data['hostname'])
@@ -464,8 +479,6 @@ def main():
         print('Name the folder for your download: ')
         name = input()
         file_path = os.path.join(data['upload_filepath'], name)
-        #print(file_path)
-        #print(os.getcwd())
         gps_bool = data['use_gps']
     os.makedirs(file_path, exist_ok=True)
 
