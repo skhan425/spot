@@ -369,7 +369,7 @@ class RecordingInterface(object):
 
         from_T_to = from_tf.mult(to_tf.inverse())
         return from_T_to.to_proto()
-    
+    '''
     #function to write the positional, temporal, and voltage data into a separate file
     def write_xyz_to_file(self, filepath):
         self._current_graph = self._graph_nav_client.download_graph()
@@ -380,7 +380,9 @@ class RecordingInterface(object):
         ]
         #loop to make a new sorted list that contains the waypoints themselves
         sorted_list_wp = []
+        print(sorted_list)
         for wp in sorted_list:
+            print(wp)
             sorted_list_wp.append(self._get_waypoint(wp[0]))
         count = 1
         for waypoint in sorted_list_wp:
@@ -400,7 +402,7 @@ class RecordingInterface(object):
             writer.writerows(data)
             #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
             #destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
-
+'''
     def run(self, filepath):
         """Main loop for the command line interface."""
         while True:
@@ -427,7 +429,7 @@ class RecordingInterface(object):
 
             if req_type == 'q':
                 #when quiting, call function to write data
-                self.write_xyz_to_file(filepath)
+                #self.write_xyz_to_file(filepath)
                 break
 
             if req_type not in self._command_dictionary:

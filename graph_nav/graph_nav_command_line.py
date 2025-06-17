@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import traceback
+import csv
 
 import google.protobuf.timestamp_pb2
 import graph_nav_util
@@ -569,6 +570,20 @@ class GraphNavInterface(object):
 
         print(f'ERROR: Waypoint {id} not found in graph.')
         return None
+    
+    def _get_waypoint(self, id):
+        """Get waypoint from graph (return None if waypoint not found)"""
+
+        if self._current_graph is None:
+            self._current_graph = self._graph_nav_client.download_graph()
+
+        for waypoint in self._current_graph.waypoints:
+            if waypoint.id == id:
+                return waypoint
+
+        print(f'ERROR: Waypoint {id} not found in graph.')
+        return None
+
 
     def _on_quit(self):
         """Cleanup on quit from the command line interface."""
@@ -576,8 +591,39 @@ class GraphNavInterface(object):
         if self._powered_on and not self._started_powered_on:
             self._robot_command_client.robot_command(RobotCommandBuilder.safe_power_off_command(),
                                                      end_time_secs=time.time())
+            
+    #function to write the positional, temporal, and voltage data into a separate file
+    def write_xyz_to_file(self, filepath):
+        self._current_graph = self._graph_nav_client.download_graph()
+            #turn graph into sorted list of ids
+        sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
+        data = [
+            ['Name', 'Time', 'X', 'Y', 'Z', 'Value']
+        ]
+        #loop to make a new sorted list that contains the waypoints themselves
+        sorted_list_wp = []
+        for wp in sorted_list:
+            sorted_list_wp.append(self._get_waypoint(wp[0]))
+        count = 1
+        for waypoint in sorted_list_wp:
+            #time measurement and conversion to readable format
+            timestamp = waypoint.annotations.creation_time.seconds + waypoint.annotations.creation_time.nanos / 1e9
+            time_struct = time.localtime(timestamp)
+            time_val = time.asctime(time_struct)
+            #positional values
+            x = waypoint.waypoint_tform_ko.position.x
+            y = waypoint.waypoint_tform_ko.position.y
+            z = waypoint.waypoint_tform_ko.position.z
+            value = 'Placeholder' # to be used for the voltage value that we measure
+            data.append(['Waypoint ' + str(count), str(time_val), str(x), str(y), str(z), str(value)])
+            count += 1
+        with open(os.path.join(filepath, 'Waypoints_xyz.csv'), mode = 'w', newline = '') as destination:
+            writer = csv.writer(destination)
+            writer.writerows(data)
+            #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
+            #destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
 
-    def run(self):
+    def run(self, filepath):
         """Main loop for the command line interface."""
         while True:
             print("Options:")
@@ -591,6 +637,7 @@ class GraphNavInterface(object):
             req_type = str.split(inputs)[0]
 
             if req_type == 'q':
+                self.write_xyz_to_file(filepath)
                 self._on_quit()
                 break
 
@@ -612,23 +659,27 @@ def main():
         data = json.load(file)
         robot = sdk.create_robot(data['hostname'])
         robot.authenticate(data['username'], data['password'])
+        print('What is that name of the file in C:\\Users\\mspal\\spot\\graph_nav\\downloaded_graphs that holds the graph data?')
+        folder_name = input()
+        filepath = os.path.join(data['upload_filepath'], folder_name)
+        file_path_2 = os.path.join(filepath, 'downloaded_graph')
 
-        graph_nav_command_line = GraphNavInterface(robot, data['upload_filepath'], data['use_gps'])
-        lease_client = robot.ensure_client(LeaseClient.default_service_name)
-        try:
-            with LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=True):
-                try:
-                    graph_nav_command_line.run()
-                    return True
-                except Exception as exc:  # pylint: disable=broad-except
-                    print(exc)
-                    print('Graph nav command line client threw an error.')
-                    return False
-        except ResourceAlreadyClaimedError:
-            print(
-                'The robot\'s lease is currently in use. Check for a tablet connection or try again in a few seconds.'
-            )
-            return False
+        graph_nav_command_line = GraphNavInterface(robot, file_path_2, data['use_gps'])
+    lease_client = robot.ensure_client(LeaseClient.default_service_name)
+    try:
+        with LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=True):
+            try:
+                graph_nav_command_line.run(filepath)
+                return True
+            except Exception as exc:  # pylint: disable=broad-except
+                print(exc)
+                print('Graph nav command line client threw an error.')
+                return False
+    except ResourceAlreadyClaimedError:
+        print(
+            'The robot\'s lease is currently in use. Check for a tablet connection or try again in a few seconds.'
+        )
+        return False
 
 
 if __name__ == '__main__':
