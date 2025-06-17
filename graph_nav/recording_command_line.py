@@ -368,6 +368,28 @@ class RecordingInterface(object):
 
         from_T_to = from_tf.mult(to_tf.inverse())
         return from_T_to.to_proto()
+    
+    def write_xyz_to_file(self):
+        with open('Waypoints_xyz.txt', 'w') as destination:
+            # Write the data to the destination file
+            self._current_graph = self._graph_nav_client.download_graph()
+            sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
+            sorted_list_wp = []
+            for wp in sorted_list:
+                sorted_list_wp.append(self._get_waypoint(wp[0]))
+            count = 1
+            for waypoint in sorted_list_wp:
+                timestamp = waypoint.annotations.creation_time.seconds + waypoint.annotations.creation_time.nanos / 1e9
+                time_struct = time.localtime(timestamp)
+                time_val = time.asctime(time_struct)
+                x = waypoint.waypoint_tform_ko.position.x
+                y = waypoint.waypoint_tform_ko.position.y
+                z = waypoint.waypoint_tform_ko.position.z
+                value = 'Placeholder'
+                destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
+                destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
+                count += 1
+
 
     def run(self):
         """Main loop for the command line interface."""
@@ -394,6 +416,7 @@ class RecordingInterface(object):
             req_type = str.split(inputs)[0]
 
             if req_type == 'q':
+                self.write_xyz_to_file()
                 break
 
             if req_type not in self._command_dictionary:
@@ -404,12 +427,11 @@ class RecordingInterface(object):
                 cmd_func(str.split(inputs)[1:])
             except Exception as e:
                 print(e)
-
-
+        
 def main():
     """Run the command-line interface."""
     parser = argparse.ArgumentParser(description=__doc__)
-    bosdyn.client.util.add_base_arguments(parser)
+    #bosdyn.client.util.add_base_arguments(parser)
     parser.add_argument('-d', '--download-filepath',
                         help='Full filepath for where to download graph and snapshots.',
                         default=os.getcwd())
