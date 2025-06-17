@@ -369,8 +369,8 @@ class RecordingInterface(object):
         from_T_to = from_tf.mult(to_tf.inverse())
         return from_T_to.to_proto()
     
-    def write_xyz_to_file(self):
-        with open('Waypoints_xyz.txt', 'w') as destination:
+    def write_xyz_to_file(self, filepath):
+        with open(os.path.join(filepath, 'Waypoints_xyz.txt'), 'w') as destination:
             # Write the data to the destination file
             self._current_graph = self._graph_nav_client.download_graph()
             sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
@@ -391,7 +391,7 @@ class RecordingInterface(object):
                 count += 1
 
 
-    def run(self):
+    def run(self, filepath):
         """Main loop for the command line interface."""
         while True:
             print("""
@@ -416,7 +416,7 @@ class RecordingInterface(object):
             req_type = str.split(inputs)[0]
 
             if req_type == 'q':
-                self.write_xyz_to_file()
+                self.write_xyz_to_file(filepath)
                 break
 
             if req_type not in self._command_dictionary:
@@ -457,10 +457,17 @@ def main():
     sdk = bosdyn.client.create_standard_sdk('RecordingClient')
     #robot = sdk.create_robot(options.hostname)
     #bosdyn.client.util.authenticate(robot)
-    with open('graph_nav\spot_configs.json', 'r') as file:
+    with open('graph_nav\\spot_configs.json', 'r') as file:
         data = json.load(file)
         robot = sdk.create_robot(data['hostname'])
         robot.authenticate(data['username'], data['password'])
+        print('Name the folder for your download: ')
+        name = input()
+        file_path = os.path.join(data['upload_filepath'], name)
+        #print(file_path)
+        #print(os.getcwd())
+        gps_bool = data['use_gps']
+    os.makedirs(file_path, exist_ok=True)
 
     # Parse session and user name options.
     session_name = options.recording_session_name
@@ -474,11 +481,11 @@ def main():
     client_metadata = GraphNavRecordingServiceClient.make_client_metadata(
         session_name=session_name, client_username=user_name, client_id='RecordingClient',
         client_type='Python SDK')
-    recording_command_line = RecordingInterface(robot, options.download_filepath, options.download_name,
-                                                client_metadata, options.use_gps)
+    recording_command_line = RecordingInterface(robot, file_path, options.download_name,
+                                                client_metadata, gps_bool)
 
     try:
-        recording_command_line.run()
+        recording_command_line.run(file_path)
         return True
     except Exception as exc:  # pylint: disable=broad-except
         print(exc)
