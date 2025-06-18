@@ -617,7 +617,7 @@ class GraphNavInterface(object):
             value = 'Placeholder' # to be used for the voltage value that we measure
             data.append(['Waypoint ' + str(count), str(time_val), str(x), str(y), str(z), str(value)])
             count += 1
-        with open(os.path.join(filepath, 'Waypoints_xyz.csv'+ str(foldername)), mode = 'w', newline = '') as destination:
+        with open(os.path.join(filepath, 'Waypoints_xyz'+ str(foldername) + '.csv'), mode = 'w', newline = '') as destination:
             writer = csv.writer(destination)
             writer.writerows(data)
             #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
