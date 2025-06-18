@@ -142,7 +142,7 @@ def create_point_cloud_object(waypoints, snapshots, waypoint_id):
     actor = vtk.vtkActor()
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputData(poly_data)
-    mapper.ScalarVisibilityOn()
+    mapper.ScalarVisibilityOff()
     actor.SetMapper(mapper)
     actor.GetProperty().SetPointSize(2)
     actor.SetUserTransform(waypoint_tform_cloud)
