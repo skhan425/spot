@@ -593,7 +593,7 @@ class GraphNavInterface(object):
                                                      end_time_secs=time.time())
             
     #function to write the positional, temporal, and voltage data into a separate file
-    def write_xyz_to_file(self, filepath):
+    def write_xyz_to_file(self, filepath, foldername):
         self._current_graph = self._graph_nav_client.download_graph()
             #turn graph into sorted list of ids
         sorted_list = graph_nav_util.sort_waypoints_chrono(self._current_graph)
@@ -604,7 +604,7 @@ class GraphNavInterface(object):
         sorted_list_wp = []
         for wp in sorted_list:
             sorted_list_wp.append(self._get_waypoint(wp[0]))
-        count = 1
+        count = 0
         for waypoint in sorted_list_wp:
             #time measurement and conversion to readable format
             timestamp = waypoint.annotations.creation_time.seconds + waypoint.annotations.creation_time.nanos / 1e9
@@ -617,13 +617,13 @@ class GraphNavInterface(object):
             value = 'Placeholder' # to be used for the voltage value that we measure
             data.append(['Waypoint ' + str(count), str(time_val), str(x), str(y), str(z), str(value)])
             count += 1
-        with open(os.path.join(filepath, 'Waypoints_xyz.csv'), mode = 'w', newline = '') as destination:
+        with open(os.path.join(filepath, 'Waypoints_xyz.csv'+ str(foldername)), mode = 'w', newline = '') as destination:
             writer = csv.writer(destination)
             writer.writerows(data)
             #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
             #destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
 
-    def run(self, filepath):
+    def run(self, filepath, foldername):
         """Main loop for the command line interface."""
         while True:
             print("Options:")
@@ -637,7 +637,7 @@ class GraphNavInterface(object):
             req_type = str.split(inputs)[0]
 
             if req_type == 'q':
-                self.write_xyz_to_file(filepath)
+                self.write_xyz_to_file(filepath, foldername)
                 self._on_quit()
                 break
 
@@ -669,7 +669,7 @@ def main():
     try:
         with LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=True):
             try:
-                graph_nav_command_line.run(filepath)
+                graph_nav_command_line.run(filepath, folder_name)
                 return True
             except Exception as exc:  # pylint: disable=broad-except
                 print(exc)

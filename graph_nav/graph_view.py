@@ -318,7 +318,6 @@ def create_anchored_graph_objects(current_graph, current_waypoint_snapshots, cur
     waypoints_in_anchoring = 0
     # Create VTK objects associated with each waypoint.
     for waypoint in current_graph.waypoints:
-        continue
         if waypoint.id in current_anchors:
             waypoint_object = create_waypoint_object(renderer, current_waypoints,
                                                      current_waypoint_snapshots, waypoint.id)
@@ -449,8 +448,10 @@ def main():
     # Load the map from the given file.
     with open('graph_nav\\spot_configs.json', 'r') as file:
         data = json.load(file)
+        print('In which folder is the map you want to view (should be the one you named when recording the mission)')
+        folder = input()
         (current_graph, current_waypoints, current_waypoint_snapshots, current_edge_snapshots,
-        current_anchors, current_anchored_world_objects) = load_map(os.path.join(os.path.join(data['upload_filepath'], 'hub4'),'downloaded_graph'))
+        current_anchors, current_anchored_world_objects) = load_map(os.path.join(os.path.join(data['upload_filepath'], folder),'downloaded_graph'))
 
     # Create the renderer.
     renderer = vtk.vtkRenderer()
@@ -472,7 +473,7 @@ def main():
     camera_pos = avg_pos + np.array([-1, 0, 5])
 
     camera = renderer.GetActiveCamera()
-    camera.SetViewUp(0, 0, 1)
+    camera.SetViewUp(0, -1, 0)
     camera.SetPosition(camera_pos[0], camera_pos[1], camera_pos[2])
 
     # Create the VTK renderer and interactor.
