@@ -3,5 +3,6 @@
     "username": "admin",
     "password": "mdnh8oedjn2q",
     "use_gps": false,
-    "upload_filepath": "C:\\Users\\mspal\\spot\\graph_nav\\downloaded_graphs"
+    "upload_filepath": ".\\graph_nav\\downloaded_graphs",
+    "save_image_filepath": ".\\graph_nav\\visualization\\Captured_images"
 }

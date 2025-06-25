@@ -7,6 +7,8 @@ import sys
 import time
 import traceback
 import csv
+import numpy as np
+import cv2
 
 import google.protobuf.timestamp_pb2
 import graph_nav_util
@@ -25,6 +27,7 @@ from bosdyn.client.math_helpers import Quat, SE3Pose
 from bosdyn.client.power import PowerClient, power_on_motors, safe_power_off_motors
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
+from bosdyn.client.image import ImageClient
 
 
 class GraphNavInterface(object):
@@ -426,6 +429,7 @@ class GraphNavInterface(object):
         waypoint_ids = graph_nav_util.sort_waypoints_chrono(self._current_graph)
         for i in range(1, len(waypoint_ids)):
             navigate_to(waypoint_ids[i])
+            #self.capture_image(i)
             time.sleep(3) # Put action here
         if self._powered_on and not self._started_powered_on:
             # Sit the robot down + power off after the navigation command is complete.
@@ -620,8 +624,32 @@ class GraphNavInterface(object):
         with open(os.path.join(filepath, 'Waypoints_xyz'+ str(foldername) + '.csv'), mode = 'w', newline = '') as destination:
             writer = csv.writer(destination)
             writer.writerows(data)
+
+            #can use code below if you want to send to a txt file in a readable format
+            #
+        #with open(os.path.join(filepath, 'Waypoints_xyz' + str(foldername) +'.txt') mode = 'w') as destination:
             #destination.write('Waypoint ' + str(count) + '  Time: ' + str(time_val) + '\n')
             #destination.write('  X: '+ str(x) +'  Y: ' + str(y) +'  Z: ' + str(z) + ' Value:  ' + str(value) + '\n\n')
+
+    #untested
+    '''
+    def capture_image(self, image_num):
+        image_client = self.ensure_client(ImageClient.default_service_name)
+        image_responses = image_client.get_image_from_sources(['frontleft_fisheye_image'])
+        dtype = np.uint8
+        img = np.frombuffer(image_responses[0].shot.image.data, dtype=dtype)
+        img = cv2.imdecode(img, -1)
+        img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        with open('graph_nav\\spot_configs.json', 'r') as file:
+            while True:
+                data = json.load(file)
+
+                image_saved_path = os.path.join(data["save_image_filepath"], image_responses[0].source.name + '_{:0>4d}'.format(image_num) + '.jpg')
+
+                if not os.path.exists(image_saved_path):
+                    break
+        cv2.imwrite(image_saved_path, img)
+    '''
 
     def run(self, filepath, foldername):
         """Main loop for the command line interface."""
